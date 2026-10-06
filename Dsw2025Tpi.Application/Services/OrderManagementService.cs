@@ -54,11 +54,13 @@ public class OrderManagementService
             }).ToList()
         };
 
+        // Los productos vienen trackeados por el mismo DbContext: el descuento de stock
+        // se guarda junto con la orden en un único SaveChanges (atómico). Antes se
+        // guardaba producto por producto y, si la orden fallaba, el stock quedaba descontado.
         foreach (var item in request.OrderItems)
         {
             var product = products.First(p => p.Id == item.ProductId);
             product.stockQuantity -= item.Quantity;
-            await _repository.Update(product);
         }
 
         var result = await _repository.Add(order);
