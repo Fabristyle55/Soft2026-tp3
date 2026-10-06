@@ -16,27 +16,43 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
+        // La cadena de conexi贸n NO est谩 en el c贸digo: se lee de la configuraci贸n.
+        // - Local: appsettings.Development.json (LocalDB).
+        // - Docker / Azure: variable de entorno ConnectionStrings__Default
+        //   (o la Connection String "Default" de tipo SQLAzure del App Service).
+        var connectionString = builder.Configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException(
+                "Falta la cadena de conexi贸n 'Default'. Defin铆 la variable de entorno ConnectionStrings__Default.");
+
+        builder.Services.AddDbContext<Dsw2025TpiContext>(options =>
+            options.UseSqlServer(connectionString, sql =>
+                // Azure SQL (plan free) se auto-pausa: reintentamos mientras se reanuda.
+                sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null)));
 
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddDbContext<Dsw2025TpiContext>(options =>
-            options.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=Dsw2025TpiDb;Integrated Security=True"));
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(options =>
+            options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+            {
+                Title = "Dsw2025Tpi API",
+                Version = "v1",
+                Description = "API del e-commerce (UTN FRT - ICS 2026)"
+            }));
         builder.Services.AddHealthChecks();
 
-        // Repositorio e inyecci髇 de dependencias
+        // CORS para el frontend React: or铆genes permitidos por configuraci贸n (Cors__AllowedOrigins__0, ...).
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        builder.Services.AddCors(options =>
+            options.AddDefaultPolicy(policy =>
+                policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+
+        // Repositorio e inyecci贸n de dependencias
         builder.Services.AddScoped<IRepository, EfRepository>();
 
-        // Registro del servicio ProductManagementService
+        // Servicios de aplicaci贸n
         builder.Services.AddScoped<ProductManagementService>();
         builder.Services.AddScoped<OrderManagementService>();
-
-        // Agregar controladores y Swagger (si quer閟)
-        builder.Services.AddControllers();
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
 
         var app = builder.Build();
 
@@ -48,7 +64,7 @@ public class Program
             {
                 var context = services.GetRequiredService<Dsw2025TpiContext>();
                 context.Database.Migrate(); // Aplica las migraciones pendientes
-                context.Seedwork<Customer>("Sources/customers.json"); // Usa el m閠odo de extensi髇 para seedear los clientes
+                context.Seedwork<Customer>("Sources/customers.json"); // Usa el m茅todo de extensi贸n para seedear los clientes
             }
             catch (Exception ex)
             {
@@ -57,16 +73,32 @@ public class Program
             }
         }
 
+        // Swagger habilitado tambi茅n fuera de Development para poder probar la API
+        // desde el dominio que asigna Azure (https://<app>.azurewebsites.net/swagger).
+        // Se puede apagar con la variable de entorno Swagger__Enabled=false.
+        if (app.Environment.IsDevelopment() || app.Configuration.GetValue("Swagger:Enabled", true))
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Dsw2025Tpi API v1");
+                options.DocumentTitle = "Dsw2025Tpi API";
+            });
+
+            // La ra铆z del dominio redirige a Swagger.
+            app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+        }
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            // En Docker y en Azure el TLS lo termina el proxy/plataforma: el contenedor escucha HTTP en 8080.
+            app.UseHttpsRedirection();
         }
 
-        app.UseHttpsRedirection();
-
         app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+        app.UseCors();
 
         app.UseAuthorization();
 
