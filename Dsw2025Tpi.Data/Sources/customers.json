@@ -1,0 +1,17 @@
+[
+    {
+        "name": "Juan Perez",
+        "email": "juan.perez@gmail.com",
+        "phoneNumber": "+54 911 1234 5678"
+    },
+    {
+        "name": "Hernan Juares",
+        "email": "juan.perez@gmail.com",
+        "phoneNumber": "+54 911 1234 5678"
+    },
+    {
+        "name": "Francisco Perez",
+        "email": "juan.perez@gmail.com",
+        "phoneNumber": "+54 911 1234 5678"
+    }
+]

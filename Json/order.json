@@ -1,0 +1,46 @@
+[
+{
+  "customerId": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+  "shippingAddress": "Santiago 123, San Miguel",
+  "billingAddress": "Santiago 123, San Miguel",
+  "notes": "Entregar por la tarde",
+  "orderItems": [
+    {
+      "productId": "e1111111-e222-4ccc-bbbb-a12345678910",
+      "quantity": 2,
+      "name": "Producto de ejemplo",
+      "description": "ok",
+      "unitPrice": 199.99
+    }
+  ]
+},
+{
+  "customerId": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+  "shippingAddress": "Calle Falsa 123",
+  "billingAddress": "Calle Falsa 123",
+  "orderItems": [
+    {
+      "productId": "e1111111-e222-4ccc-bbbb-a12345678910",
+      "quantity": 9999,
+      "name": "Producto real",
+      "description": "No hay stock suficiente",
+      "unitPrice": 199.99
+    }
+  ]
+},
+{
+  "customerId": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+  "shippingAddress": "Calle Falsa 123",
+  "billingAddress": "Calle Falsa 123",
+  "notes": "Entrega urgente",
+  "orderItems": [
+    {
+      "productId": "00000000-0000-0000-0000-000000000000",
+      "quantity": 1,
+      "name": "Producto ficticio",
+      "description": "No encontrado",
+      "unitPrice": 150
+    }
+  ]
+}
+]

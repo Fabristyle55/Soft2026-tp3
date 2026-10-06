@@ -1,0 +1,34 @@
+[
+{
+  "sku": "ABC123",
+  "internalCode": "INT-002",
+  "name": "Coca-Cola",
+  "description": "SKU existente",
+  "currentUnitPrice": 150.0,
+  "stockQuantity": 20
+},
+{
+  "sku": "XYZ001",
+  "internalCode": "INT-003",
+  "name": "Galletas Oreo",
+  "description": "Precio invalido",
+  "currentUnitPrice": -10,
+  "stockQuantity": 5
+},
+{
+  "sku": "GBC123",
+  "internalCode": "INT-001",
+  "name": "Coca",
+  "description": "ok.",
+  "currentUnitPrice": 199.99,
+  "stockQuantity": 50
+}
+{
+  "sku": "ABC443",
+  "internalCode": "INT-001",
+  "name": "Papas",
+  "description": "stock invalido",
+  "currentUnitPrice": 199.99,
+  "stockQuantity": 0
+}
+]
