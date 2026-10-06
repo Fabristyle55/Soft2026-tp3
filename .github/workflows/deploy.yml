@@ -1,0 +1,118 @@
+name: CI/CD - Dsw2025Tpi API
+
+# CI en cada push o PR hacia development/main.
+# CD (despliegue a Azure App Service) solo cuando se integra a main.
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  API_PROJECT: Dsw2025Tpi.Api/Dsw2025Tpi.Api.csproj
+
+permissions:
+  contents: read
+
+jobs:
+  # 1) Restauración + compilación limpia (+ tests si existen)
+  build:
+    name: Build y tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restaurar paquetes
+        run: dotnet restore Dsw2025Tpi.sln
+
+      - name: Compilar (Release)
+        run: dotnet build Dsw2025Tpi.sln -c Release --no-restore
+
+      - name: Tests
+        run: dotnet test Dsw2025Tpi.sln -c Release --no-build --verbosity normal
+
+      - name: Publicar artefacto
+        run: dotnet publish ${{ env.API_PROJECT }} -c Release --no-build -o ./publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-publish
+          path: ./publish
+          retention-days: 7
+
+  # 2) Construcción de la imagen Docker (valida el Dockerfile en cada PR;
+  #    en push se publica en GitHub Container Registry)
+  docker:
+    name: Imagen Docker
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Los tags de Docker deben ir en minúsculas (el owner puede tener mayúsculas).
+      - name: Nombre de la imagen
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dsw2025tpi-api" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login a GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (y push en main/development)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.event_name == 'push' && github.ref_name || 'pr' }}
+            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 3) Despliegue automático a Azure App Service (plan Free F1)
+  deploy:
+    name: Deploy a Azure
+    needs: [build, docker]
+    # Se saltea hasta que exista la variable AZURE_WEBAPP_NAME (Azure todavía no configurado).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_WEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.webapp-url }}/swagger
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-publish
+          path: ./publish
+
+      - name: Deploy a Azure Web App
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
+
+      - name: Smoke test (healthcheck)
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.webapp-url }}/healthcheck" || true)
+            echo "Intento $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "La API no respondió 200 en /healthcheck" && exit 1
