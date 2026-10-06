@@ -8,9 +8,9 @@ namespace Dsw2025Tpi.Domain.Entities;
 
 public class Order : EntityBase
 {
-    public Guid customerId;
+    public Guid customerId { get; set; }
     public Customer customer { get; set; }
-    public OrderStatus status;
+    public OrderStatus status { get; set; }
 
     public new Guid Id { get; set; }
     public DateTime date { get; set; }

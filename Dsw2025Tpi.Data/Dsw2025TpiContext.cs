@@ -36,6 +36,14 @@ public class Dsw2025TpiContext: DbContext
             entity.Property(o => o.shippingAdress).IsRequired().HasMaxLength(200);
             entity.Property(o => o.billingAdress).IsRequired().HasMaxLength(200);
             entity.Property(o => o.notes).HasMaxLength(500);
+            entity.Property(o => o.status).IsRequired();
+
+            // FK explícita: antes customerId era un campo y EF creaba una FK sombra (customerId1)
+            // que quedaba vacía y hacía fallar el INSERT de cada orden.
+            entity.Property(o => o.customerId).HasColumnType("char(36)");
+            entity.HasOne(o => o.customer)
+                  .WithMany(c => c.Orders)
+                  .HasForeignKey(o => o.customerId);
 
         });
 
