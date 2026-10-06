@@ -32,7 +32,13 @@ public class Program
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(options =>
+            options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+            {
+                Title = "Dsw2025Tpi API",
+                Version = "v1",
+                Description = "API del e-commerce (UTN FRT - ICS 2026)"
+            }));
         builder.Services.AddHealthChecks();
 
         // CORS para el frontend React: orígenes permitidos por configuración (Cors__AllowedOrigins__0, ...).
@@ -67,12 +73,25 @@ public class Program
             }
         }
 
+        // Swagger habilitado también fuera de Development para poder probar la API
+        // desde el dominio que asigna Azure (https://<app>.azurewebsites.net/swagger).
+        // Se puede apagar con la variable de entorno Swagger__Enabled=false.
+        if (app.Environment.IsDevelopment() || app.Configuration.GetValue("Swagger:Enabled", true))
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Dsw2025Tpi API v1");
+                options.DocumentTitle = "Dsw2025Tpi API";
+            });
+
+            // La raíz del dominio redirige a Swagger.
+            app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+        }
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-
             // En Docker y en Azure el TLS lo termina el proxy/plataforma: el contenedor escucha HTTP en 8080.
             app.UseHttpsRedirection();
         }
