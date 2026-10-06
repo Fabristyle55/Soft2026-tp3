@@ -22,7 +22,7 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> CreateProductAsync([FromBody] ProductModel.Request request)
     {
          var id = await _service.CreateAsync(request);
-         return CreatedAtAction(nameof(_service.GetById), new { id }, new { id });
+         return CreatedAtRoute("GetProductById", new { id }, new { id });
     }
 
     // Fix for CS1003 and CS1513 errors in the GetProducts method
@@ -40,7 +40,7 @@ public class ProductsController : ControllerBase
 
     //EndPoint #3 - Obtener un producto por ID
     [HttpGet]
-    [Route("api/products/{id}")]
+    [Route("api/products/{id}", Name = "GetProductById")]
     public async Task<IActionResult> GetProductByIdAsync(Guid id)
     {
         var product = await _service.GetById(id);
